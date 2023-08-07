@@ -28,11 +28,11 @@ class Script(scripts.Script):
         return "ControlNet Fastload"
 
     def show(self, is_img2img):
-        return True
+        return scripts.AlwaysVisible
 
     def ui(self, is_img2img):
         ui_list = []
-        with (gr.Accordion("ControlNet Fastload", open=True)):
+        with (gr.Accordion("ControlNet Fastload", open=False)):
             with gr.Tab("Load data from file"):
                 with gr.Row():
                     enabled = gr.Checkbox(value=False, label="Enable", elem_id=self.elem_id("cnfl_enabled"))
@@ -81,7 +81,7 @@ class Script(scripts.Script):
                 )
         return ui_list
 
-    def run(self, p, *args):
+    def before_process(self, p, *args):
         enabled, mode, saveControlnet, overwritePriority, uploadFile = args[:5]
         if enabled:
             # Load start
@@ -123,8 +123,6 @@ class Script(scripts.Script):
                 global save_flag, save_filetype
                 save_flag = True
                 save_filetype = saveControlnet
-        proc = process_images(p)
-        return proc
 
 
 def viewSaveDataExecute(file):

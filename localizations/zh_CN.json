@@ -1,0 +1,17 @@
+{
+  "Enable": "启用",
+  "Mode": "模式",
+  "Load Only": "仅加载",
+  "Save Only": "仅保存",
+  "Load & Save": "加载并保存",
+  "Save Controlnet Data in ...": "保存Controlnet数据为...",
+  "Where to save Controlnet data?": "要在哪里保存Controlnet的数据呢？",
+  "Embed photo": "嵌入至生成图片",
+  "Extra .cni file": "保存为.cni文件",
+  "Both": "全部",
+  "Overwrite priority": "覆盖优先级",
+  "If the ControlNet Plugin is enabled, which do you use first?": "在启用ControlNet插件情况下，优先使用哪里的数据呢？",
+  "Plugin first": "插件优先",
+  "Script first": "脚本优先",
+  "Upload Image or .cni file": "上传图片或.cni文件"
+}

@@ -69,7 +69,7 @@ class Script(scripts.Script):
                                                                                                allow_preview=True,
                                                                                                show_download_button=True,
                                                                                                object_fit="contain",
-                                                                                               height="auto")
+                                                                                               height="auto", show_label=True)
                 with gr.Row():
                     text_view_tab = gr.Json(label="Text data view",
                                             elem_id=self.elem_id("cnfl_text_view_tab"))
@@ -136,13 +136,15 @@ def viewSaveDataExecute(file):
         tmpControlNetList = loadFromFile(file_name_)
         previewPicture = []
         previewInformation = []
+        loop_count = 0
         for itm in tmpControlNetList:
             tmp = vars(itm)
             if "image" in tmp and tmp["image"] is not None:
-                image_arrays = [img_array for img_array in tmp["image"].values()]
+                image_arrays = [(img_array, f"Controlnet - {loop_count}") for img_array in tmp["image"].values()]
                 previewPicture.extend(image_arrays)
                 tmp.pop("image")
             previewInformation.append(tmp)
+            loop_count += 1
         return previewPicture, previewInformation
     except Exception as e:
         print_err(e)

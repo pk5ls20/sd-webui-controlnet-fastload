@@ -2,7 +2,7 @@
 An extension for `stable-diffusion-webui`.    
 [中文文档](README_zh_CN.md)   
 ## Features
-- Save parameters in the [Controlnet plugin](https://github.com/Mikubill/sd-webui-controlnet).
+- Can save the parameters of the [Controlnet plugin](https://github.com/Mikubill/sd-webui-controlnet).
 - Embed Controlnet parameters directly into the image or save in a separate file for sharing.
 - Quickly load parameters from an image or file embedded with Controlnet parameters to txt2img or img2img.
 
@@ -65,4 +65,4 @@ Parameters include:
 - filepath: (str, {Your filepath})
 - except_type: (str options: "base64", "nparray")
 
-For additional information, visit: {your local url}/docs#/default/load_controlnetFastload_load_post
+For additional information, visit: `{your local sd-webui url}/docs#/default/load_controlnetFastload_load_post`

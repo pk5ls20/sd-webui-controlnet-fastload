@@ -16,9 +16,9 @@
 
 ### API
 
-#### 通过 `/sdapi/v1/txt2img` 或 `/sdapi/v1/img2img`
-通过在`/sdapi/v1/txt2img`或`/sdapi/v1/img2img`中的参数加入`script_name`和`script_args` 实现, 详情参考[这里](https://github.com/mix1009/sdwebuiapi/commit/fe269dc2d4f8a98e96c63c8a7d3b5f039625bc18)
-传入 `script_args` 时，请按照**先后顺序+仅传值**的原则传入
+#### 通过 `/sdapi/v1/txt2img` 或 `/sdapi/v1/img2img`    
+通过在`/sdapi/v1/txt2img`或`/sdapi/v1/img2img`中的参数加入`script_name`和`script_args` 实现, 详情参考[这里](https://github.com/mix1009/sdwebuiapi/commit/fe269dc2d4f8a98e96c63c8a7d3b5f039625bc18)    
+传入 `script_args` 时，请按照**先后顺序+仅传值**的原则传入    
 `script_args` 的五个参数：
 - enabled: (bool)
 - mode: (str: "Load & Save", "Load only", "Save only")
@@ -60,4 +60,4 @@ image.show()
 - filepath: (str, {您的文件路径})   
 - except_type: (str: "base64", "nparray")   
 
-详情参见：{sd-webui-本地网址}/docs#/default/load_controlnetFastload_load_post
+详情参见：`{sd-webui-本地网址}/docs#/default/load_controlnetFastload_load_post`

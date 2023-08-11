@@ -1,12 +1,18 @@
 import os
 import gzip
 import pickle
+import base64
 import importlib
 import gradio as gr
+from PIL import Image
 from datetime import datetime
 import modules.scripts as scripts
 from modules import script_callbacks
-from modules.processing import process_images
+from modules.script_callbacks import ImageSaveParams
+from modules.shared import opts, cmd_opts
+from modules.images import read_info_from_image
+from modules.processing import process_images, Processed
+import modules.generation_parameters_copypaste as parameters_copypaste
 
 save_flag = False
 controlNetList = []
@@ -20,19 +26,24 @@ print_warn = lambda msg: print(f'{current_timestamp()} - ControlNetFastload - \0
 print_info = lambda msg: print(f'{current_timestamp()} - ControlNetFastload - \033[92mINFO\033[0m - {msg}')
 
 
-class Script(scripts.Script):
+class ControlNetFastLoad(scripts.Script):
+    """
+    插件的主类, 继承自scripts.Script
+    参见https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Developing-extensions
+    """
+
     def __init__(self):
         pass
 
-    def title(self):
+    def title(self) -> str:
         return "ControlNet Fastload"
 
-    def show(self, is_img2img):
+    def show(self, is_img2img: bool) -> bool:
         return scripts.AlwaysVisible
 
-    def ui(self, is_img2img):
+    def ui(self, is_img2img: bool) -> list[gr.Interface]:
         ui_list = []
-        with (gr.Accordion("ControlNet Fastload", open=False)):
+        with (gr.Accordion("ControlNet Fastload v1.1", open=False)):
             with gr.Tab("Load data from file"):
                 with gr.Row():
                     enabled = gr.Checkbox(value=False, label="Enable", elem_id=self.elem_id("cnfl_enabled"))
@@ -42,26 +53,42 @@ class Script(scripts.Script):
                     # 在这里, load代表仅重写controlnet, save代表仅重写生成后的图片
                     # load&save仅能在controlnet全部未启用情况下使用, 其会加载传入controlnet, 重写controlnet, 重写生成后的图片
                 with gr.Row():
-                    with gr.Column():
-                        saveControlnet = gr.Radio(["Embed photo", "Extra .cni file", "Both"],
-                                                  label="Save Controlnet Data in ...",
-                                                  info="Where to save Controlnet data?",
-                                                  value="Extra .cni file", elem_id=self.elem_id("cnfl_saveControlnet"))
-                    with gr.Column():
-                        overwritePriority = gr.Radio(["Plugin first", "Script first"],
-                                                     label="Overwrite priority",
-                                                     info="If the ControlNet Plugin is enabled, which do you use first?",
-                                                     value="Plugin first",
-                                                     elem_id=self.elem_id("cnfl_overwritePriority"))
-                    with gr.Column():
-                        uploadFile = gr.File(type="file", label="Upload Image or .cni file",
-                                             elem_id=self.elem_id("cnfl_uploadImage"))
-                    ui_list.extend([saveControlnet, overwritePriority, uploadFile])
+                    # 出于引用关系, gr.Textbox放到这里
+                    png_other_info = gr.Textbox(visible=False, elem_id="pnginfo_generation_info")
+                    uploadFile = gr.File(type="file", label="Upload Image or .cni file",
+                                         file_types=["image", ".cni"], elem_id=self.elem_id("cnfl_uploadImage"))
+                    uploadFile.upload(
+                        fn=uploadFileListen,
+                        inputs=[uploadFile, enabled],
+                        outputs=png_other_info
+                    )
+                    ui_list.extend([uploadFile, png_other_info])
+                # 测试填充整个参数
+                with gr.Row():
+                    # 保持统一, 参见https://github.com/AUTOMATIC1111/stable-diffusion-webui/issues/11210
+                    visible_ = opts.data.get("isEnabledManualSend")
+                    visible_ = False if visible_ is None else visible_
+                    send_to_txt2img = gr.Button(label="Send to txt2img", value="Send to txt2img",
+                                                elem_id=self.elem_id("send_to_txt2img"),
+                                                visible=((not is_img2img) and visible_))
+                    send_to_img2img = gr.Button(label="Send to img2img", value="Send to img2img",
+                                                elem_id=self.elem_id("send_to_img2img"),
+                                                visible=(is_img2img and visible_))
+                    parameters_copypaste.register_paste_params_button(parameters_copypaste.ParamBinding(
+                        paste_button=send_to_txt2img, tabname="txt2img", source_text_component=png_other_info,
+                        source_image_component=None,
+                    ))
+                    parameters_copypaste.register_paste_params_button(parameters_copypaste.ParamBinding(
+                        paste_button=send_to_img2img, tabname="img2img", source_text_component=png_other_info,
+                        source_image_component=None,
+                    ))
+                    ui_list.extend([send_to_txt2img, send_to_img2img])
             with gr.Tab("View saved data"):
                 with gr.Row():
                     execute_view_tab = gr.Button(label="Execute", elem_id=self.elem_id("cnfl_execute_view_tab"))
                 with gr.Row():
                     uploadFile_view_tab = gr.File(type="file", label="Upload Image or .cni file",
+                                                  file_types=["image", ".cni"],
                                                   elem_id=self.elem_id("cnfl_uploadImage_view_tab"))
                 with gr.Row():
                     img_view_tab = gr.Gallery(type="file", label="Image data view",
@@ -69,7 +96,8 @@ class Script(scripts.Script):
                                                                                                allow_preview=True,
                                                                                                show_download_button=True,
                                                                                                object_fit="contain",
-                                                                                               height="auto", show_label=True)
+                                                                                               height="auto",
+                                                                                               show_label=True)
                 with gr.Row():
                     text_view_tab = gr.Json(label="Text data view",
                                             elem_id=self.elem_id("cnfl_text_view_tab"))
@@ -81,8 +109,18 @@ class Script(scripts.Script):
                 )
         return ui_list
 
-    def before_process(self, p, *args):
-        enabled, mode, saveControlnet, overwritePriority, uploadFile = args[:5]
+    def before_process(self, p, *args) -> None:
+        api_module = importlib.import_module('extensions.sd-webui-controlnet-fastload.scripts.api')
+        api_package = getattr(api_module, "api_package")
+        if type(args[0]) is not bool:
+            enabled, mode, uploadFile = True, args[0]['mode'], args[0]['filepath']
+            saveControlnet, overwritePriority = "", args[0]['overwritePriority']
+            api_package.api_instance.enabled = True
+            api_package.api_instance.drawId[id(p)] = []
+            api_package.api_instance.info()
+        else:
+            enabled, mode, uploadFile = args[:3]
+            saveControlnet, overwritePriority = opts.saveControlnet, opts.overwritePriority
         if enabled:
             # Load start
             try:
@@ -100,15 +138,16 @@ class Script(scripts.Script):
                     break_load = True
             except ImportError:
                 print_warn("ControlNet module not found; the script will not work.")
-                proc = process_images(p)
-                return proc
+                # proc = process_images(p)
+                # return proc
+                return
             if (mode == "Load Only" or mode == "Load & Save") and not break_load:
                 load_file_name_ = uploadFile if isinstance(uploadFile, str) else uploadFile.name
                 # 更新controlnetList
                 if controlNetListIsEmpty:
                     controlNetList = loadFromFile(load_file_name_)
                 else:
-                    if overwritePriority == "Plugin first":
+                    if overwritePriority == "ControlNet Plugin First":
                         print_warn("The plugin is not empty and has priority; the script will not work.")
                     else:
                         print_warn("The plugin is not empty, but the script has priority;"
@@ -123,9 +162,38 @@ class Script(scripts.Script):
                 global save_flag, save_filetype
                 save_flag = True
                 save_filetype = saveControlnet
+                if api_package.api_instance.enabled:
+                    api_package.api_instance.drawId[id(p)] = controlNetList
+
+    def postprocess_image(self, p, pp, *args):
+        if type(args[0]) is not bool and args[0]['mode'] != "Load Only":
+            p.extra_generation_params['ControlNetID'] = id(p)
 
 
-def viewSaveDataExecute(file):
+def uploadFileListen(pic: gr.File, enabled: bool) -> str:
+    """
+    从上传的图片/文件中提取出PNG_INFO后传回, 参考自from modules.extras import run_pnginfo
+    :param pic: 上传的图片/文件, 以包装好的gr.File形式传入
+    :param enabled: (主插件)是否启用, 未启用直接返回空字符串
+    :return: str: read_info_from_image函数返回值, 返回给一个textbox
+    """
+    if not pic:
+        return ""
+    filetype_is_cni = lambda filename: os.path.splitext(pic.name)[1] == '.cni'
+    if filetype_is_cni(pic.name) or not enabled:
+        return ""
+    fileInPil = Image.open(pic.name)
+    gen_info, items = read_info_from_image(fileInPil)
+    print(gen_info)
+    return gen_info
+
+
+def viewSaveDataExecute(file: gr.File or str) -> tuple:
+    """
+    查看本插件存储在图片/.cni中的数据
+    :param file: 上传的图片/文件, 以包装好的gr.File/str形式传入
+    :return: tuple: (list, list)  参见下面和ui渲染部分, 这个tuple喂给两个ui组件
+    """
     try:
         if file is None:
             print_warn("You did not upload an image or file.")
@@ -149,16 +217,38 @@ def viewSaveDataExecute(file):
         return [], {"Error": "An unknown error occurred, see the console for details"}
 
 
-def addToPicture(imagePath, datalist):
+def addToPicture(image: str, datalist: list, imageType: str) -> bytes | None:
+    """
+    将ControlnetList经过gzip压缩后序列化存入图片中
+    :param image: 和type挂钩
+    :param datalist: ControlnetList
+    :param imageType: "filepath" / "base64"
+    """
+    if imageType == "filepath" and (not os.path.exists(image)):
+        print_err(f"File {image} does not exist.")
+        return
     serialized_data = gzip.compress(pickle.dumps(datalist))
-    with open(imagePath, 'rb') as img_file:
-        image_data = img_file.read()
+    if imageType == "filepath":
+        with open(image, 'rb') as img_file:
+            image_data = img_file.read()
+    else:
+        image_data = base64.b64decode(image)
     combined_data = image_data + start_marker + serialized_data + end_marker
-    with open(imagePath, 'wb') as img_file:
-        img_file.write(combined_data)
+    if imageType == "filepath":
+        with open(image, 'wb') as img_file:
+            img_file.write(combined_data)
+    else:
+        return base64.b64encode(combined_data)
 
 
-def loadFromFile(filepath):
+def loadFromFile(filepath: str) -> list:
+    """
+    从图片中读取ControlnetList
+    :param filepath: 图片路径
+    """
+    if not os.path.exists(filepath):
+        print_err(f"File {filepath} does not exist.")
+        return []
     with open(filepath, 'rb') as fp:
         readyLoadData = fp.read()
     start_idx = readyLoadData.find(start_marker) + len(start_marker)
@@ -174,17 +264,22 @@ def loadFromFile(filepath):
 
 
 # 保存图片钩子
-def afterSavePicture(img_save_param):
+def afterSavePicture(img_save_param: ImageSaveParams) -> None:
+    """
+    保存图片后的钩子函数, 用于将ControlnetList写入图片中
+    注意这个函数并不能被api调用
+    :param img_save_param: 参见script_callbacks.py
+    """
     # 在这里已经知道生成图像所在位置了,直接写入数据
     if save_flag:
         filepath = os.path.join(os.getcwd(), img_save_param.filename)
         filepath_pure, _ = os.path.splitext(filepath)
         if save_filetype == "Embed photo" or save_filetype == "Both":
-            addToPicture(filepath, controlNetList)
+            addToPicture(filepath, controlNetList, "filepath")
         if save_filetype == "Extra .cni file" or save_filetype == "Both":
             with open(filepath_pure + ".cni", 'wb'):
                 pass
-            addToPicture(filepath_pure + ".cni", controlNetList)
+            addToPicture(filepath_pure + ".cni", controlNetList, "filepath")
         print_info(f"ControlNet data saved to {filepath}")
 
 

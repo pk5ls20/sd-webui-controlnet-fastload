@@ -1,10 +1,13 @@
 # sd-webui-controlnet-fastload
 An extension for `stable-diffusion-webui`.    
 [中文文档](README_zh_CN.md)   
+
 ## Features
 - Can save the parameters of the [Controlnet plugin](https://github.com/Mikubill/sd-webui-controlnet).
 - Embed Controlnet parameters directly into the image or save in a separate file for sharing.
 - Quickly load parameters from an image or file embedded with Controlnet parameters to txt2img or img2img.
+- Use under the UI or call through the API.
+- Optional features `isEnabledManualSend` **allow you to complete all preparations under this plugin.**
 
 ## Preview
 ![preview_1.png](preview_1.png)
@@ -12,57 +15,105 @@ An extension for `stable-diffusion-webui`.
 
 ## Usage
 ### UI
-Choose "ControlNet Fastload" from the "Script" checkbox. Once selected, the script activates.
+Use whatever you want.    
+> You can adjust preferences in settings or enable function `isEnabledManualSend`
 
-### API
+### Web API
 
-#### via `/sdapi/v1/txt2img` or `/sdapi/v1/img2img`
-To utilize, append the `script_name` and `script_args` parameters. Refer to [this commit](https://github.com/mix1009/sdwebuiapi/commit/fe269dc2d4f8a98e96c63c8a7d3b5f039625bc18) for comprehensive details. 
+#### Integrating `/sdapi/v1/*2img`
 
-When providing `script_args`, ensure you:
-- Adhere to the correct sequence.
-- Only pass in the actual values.
+By integrating with `/sdapi/v1/*2img`, you can only get the processed image itself
+You should confine `/sdapi/v1/*2img` with `/controlnetFastload/fetch` mentioned below to get the ControlNet data
 
-The five parameters for `script_args` are:
-- enabled: (bool)
-- mode: (str options: "Load & Save", "Load only", "Save only")
-- saveControlnet: (str options: "Embed photo", "Extra .cni file", "Both")
-- overwritePriority: (str, "Plugin first")
-- uploadFile: (str, {Your filepath})
-
-Here's a brief example in Python:
-
-```python
-import io
-import base64
-import requests
-from PIL import Image
-
-path = 'api_test1.png'
-prompt = '1girl'
-# Change here to your local URL
-url = "http://localhost:7860/sdapi/v1/txt2img"
-
-body = {
-    "prompt": prompt,
-    "negative_prompt": "",
+This is the example to work with `/sdapi/v1/txt2img`:
+```json
+{
+    "prompt": "1girl",
     "batch_size": 1,
     "steps": 20,
     "cfg_scale": 7,
-    "script_name": "ControlNet Fastload",
-    "script_args": [True, "Load & Save", "Both", "Script first", "D:\\stable-diffusion-webui\\outputs\\txt2img-images\\2023-08-07\\00007-285657811.cni"]
+    "alwayson_scripts": {
+        "controlnet fastload": {
+            "args": [
+                {
+                    "mode": "Load & Save",
+                    "filepath": "D:\\stable-diffusion-webui\\outputs\\txt2img-images\\2023-08-07\\00006-1269320983.cni",
+                    "overwritePriority": "ControlNet Plugin First"
+                }
+            ]
+        }
+    }
 }
-
-response = requests.post(url=url, json=body)
-output = response.json()
-result = output['images'][0]
-image = Image.open(io.BytesIO(base64.b64decode(result.split(",", 1)[1])))
-image.show()
 ```
 
-#### via `/controlnetFastload/load`
-Parameters include:
-- filepath: (str, {Your filepath})
-- except_type: (str options: "base64", "nparray")
+In `"args"`, pass:
+- `mode`: How the extension works, you can pass one of the `Load`, `Save`, `Load & Save`
+- `filepath`: The filepath you need to upload
+- `overwritePriority`: Determine the priority of the native ControlNet extension and this extension, you can pass one of the `ControlNet Plugin First`, `ControlNet First`
 
-For additional information, visit: `{your local sd-webui url}/docs#/default/load_controlnetFastload_load_post`
+#### Route POST `/controlnetFastload/fetch`
+
+Used to obtain the generated Controlnet data after a certain txt2img and img2img generation, Body of the route accepts a JSON object with the following property:
+- `ControlNetID`: An ID to identify a specific txt2img or img2img generation, **see the example below for details**
+- `returnType`: Decide whether to return embedded images or separate .cni files, you can pass one of the `Extra .cni file`, `Embed photo`, `Both`
+- `extraPicBase64`: [Optional] Pass the base64 of original generate image when returnType is `Embed photo` or `Both`
+
+Here's an example use both `txt2img` and `/controlnetFastload/fetch`
+```python
+import json
+import requests
+
+
+def txt2img_main():
+    # Add the "controlnet fastload" in "alwayson_scripts" to activate the extension.
+    json_ = {
+        "prompt": "1girl",
+        "negative_prompt": "",
+        "batch_size": 1,
+        "steps": 20,
+        "cfg_scale": 7,
+        "alwayson_scripts": {
+            "controlnet fastload": {
+                "args": [
+                    {
+                        "mode": "Load & Save",
+                        "filepath": "D:\\stable-diffusion-webui\outputs\\txt2img-images\\2023-08-07\\00006-1269320983"
+                                    ".cni",
+                        "overwritePriority": "Plugin first",
+                    }
+                ]
+            }
+        }
+    }
+    response = requests.post(url="http://localhost:1819/sdapi/v1/txt2img", json=json_) # replace with your url
+    pic_base64_txt2img = response.json()['images'][0]
+    info = json.loads(response.json()['info'])
+    # Here we get the ControlNetID corresponding to this time txt2ing, prepare for the next step to extract Controlnet Data
+    ControlNetID_txt2img = info['extra_generation_params']['ControlNetID']
+    return pic_base64_txt2img, ControlNetID_txt2img
+
+
+def controlNetFastload_Load(pic_base64_load, ControlNetIDLoad):
+    json__ = {
+        "ControlNetID": ControlNetIDLoad,
+        "returnType": "Extra .cni file",
+        "extraPicBase64": pic_base64_load
+    }
+    response = requests.post(url="http://localhost:1819/controlnetFastload/fetch", json=json__) # replace with your url
+    return response.json() # Here returns Controlnet Data encapsulated in Base64
+
+
+if __name__ == '__main__':
+    pic_base64_, ControlNetID_ = txt2img_main()
+    print(controlNetFastload_Load(pic_base64_, ControlNetID_))
+```
+
+#### Route POST `/controlnetFastload/view`
+
+Used to obtain information in Controlnet Data files, Body of the route accepts a JSON object with the following property:
+- `filepath`: The file address of the uploaded file
+- `except_type`: The image data format expected to be returned, you can pass one of the `nparray`, `base64`
+
+#### Route GET `/controlnetFastload/version`
+
+Get the current API version

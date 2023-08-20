@@ -18,6 +18,9 @@ An extension for `stable-diffusion-webui`.
 ### Controlnet Fastload Filter tab
 ![preview_3.png](preview_3.png)
 
+https://github.com/pk5ls20/sd-webui-controlnet-fastload/assets/114645197/ff6ce950-b52e-4748-8a27-212cc5a96c3d
+
+
 ## Usage
 ### UI
 Use whatever you want.    

@@ -31,10 +31,6 @@ def on_ui_settings():
             lambda: {"choices": ["ControlNet Plugin First", "ControlNet Fastload Plugin First"]},
             section=section)
     )
-    """
-    Plugin first -> ControlNet Plugin First
-    Script first -> ControlNet Fastload Plugin First
-    """
 
 
 script_callbacks.on_ui_settings(on_ui_settings)

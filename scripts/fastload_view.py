@@ -81,7 +81,6 @@ def on_ui_tabs() -> list:
                             endPage = gr.Button("End Page")
                     lastViewPath = gr.Textbox(visible=False, interactive=False)
                     gallery = gr.Gallery(elem_id="_images_history_gallery").style(grid=6)
-                    info = gr.HTML()
                 with gr.Column(scale=2):
                     with gr.Row():
                         # filterKey和filterValue绑定
@@ -231,20 +230,14 @@ def fnViewPathSelect(viewPathSelect: str) -> dict:
 
 
 def fnFilterKeyChange(filterKey: str, filterAll: list) -> list:
-    # needDropdown = ["preprocessor", "model", "resize mode", "pixel perfect", "control mode", "preprocessor params"]
-    # if filterKey in needDropdown:
     tmpList = [] if filterKey == "None" else [f"{filterKey} - {itm}" for itm in picDict[filterKey].keys()]
     return [gr.update(visible=True, choices=tmpList, value=[]), gr.update(visible=False), filterAll]
-    # else:
-    #     return [gr.update(visible=False), gr.update(visible=True), filterAll]
 
 
 def fnFilterAddAll(filterKey: str, filterValueDropDown: list, filterValueTextbox: str, filterAll: list) -> list:
     unique_filterAll = set(filterAll)
     if len(filterValueDropDown) > 0:
         unique_filterAll.update(filterValueDropDown)
-    # else:
-    #     unique_filterAll.add(f"{filterKey} - {filterValueTextbox}")
     return list(unique_filterAll)
 
 

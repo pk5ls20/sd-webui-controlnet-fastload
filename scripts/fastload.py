@@ -201,9 +201,11 @@ def judgeControlnetDataFile(filepath: str, filepathWeb: str) -> str:
     urlStart = re.search(r'^(.*?)/file=', filepathWeb).group(1)
     cnList = loadFromFile(filepath, False)
     cniFilePath = filepath[:-4] + ".cni"
-    if len(cnList) == 0 and os.path.exists(cniFilePath):
+    if len(cnList) > 0:
+        return filepathWeb
+    elif len(cnList) == 0 and os.path.exists(cniFilePath):
         cnList = loadFromFile(cniFilePath, False)
-        return f"{urlStart}/file={filepath[:-4]}.cni" if len(cnList) > 0 else filepathWeb
+        return f"{urlStart}/file={filepath[:-4]}.cni" if len(cnList) > 0 else ""
     else:
         return ""
 

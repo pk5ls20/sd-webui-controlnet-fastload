@@ -18,13 +18,14 @@
 ### Controlnet Fastload筛选Tab
 ![preview_3.png](preview_3.png)
 
+https://github.com/pk5ls20/sd-webui-controlnet-fastload/assets/114645197/054dcbd2-3f04-4d56-9339-e119a2eeed46
+
 ## 使用方法
 ### 用户界面
 开箱即用   
 > 你可以在设置中调整插件偏好或启用`isEnabledManualSend`
 
 ### Web API
-
 #### 与`/sdapi/v1/*2img`集成使用 
 
 在与`/sdapi/v1/*2img`集成使用时你只能得到处理好的图片本体   

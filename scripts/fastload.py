@@ -1,10 +1,12 @@
 import os
+import re
 import gzip
 import pickle
 import base64
 import importlib
 import gradio as gr
 from PIL import Image
+from typing import Optional
 from datetime import datetime
 import modules.scripts as scripts
 from modules import script_callbacks
@@ -43,7 +45,8 @@ class ControlNetFastLoad(scripts.Script):
 
     def ui(self, is_img2img: bool) -> list[gr.Interface]:
         ui_list = []
-        with (gr.Accordion("ControlNet Fastload v1.1", open=False)):
+        elem_id_ = self.elem_id("img2img_controlnet_fastload" if is_img2img else "txt2img_controlnet_fastload")
+        with (gr.Accordion("ControlNet Fastload v1.2", open=False, elem_id=elem_id_)):
             with gr.Tab("Load data from file"):
                 with gr.Row():
                     enabled = gr.Checkbox(value=False, label="Enable", elem_id=self.elem_id("cnfl_enabled"))
@@ -188,6 +191,25 @@ def uploadFileListen(pic: gr.File, enabled: bool) -> str:
     return gen_info
 
 
+def judgeControlnetDataFile(filepath: str, filepathWeb: str) -> str:
+    """
+    传入图片文件地址,判断controlnet数据存在于图片文件/.同名cni文件
+    :param filepath: 图片文件地址
+    :param filepathWeb: 图片文件地址(网页端)
+    :return filepath(修改后): 含有controlnet数据文件地址
+    """
+    urlStart = re.search(r'^(.*?)/file=', filepathWeb).group(1)
+    cnList = loadFromFile(filepath, False)
+    cniFilePath = filepath[:-4] + ".cni"
+    if len(cnList) > 0:
+        return filepathWeb
+    elif len(cnList) == 0 and os.path.exists(cniFilePath):
+        cnList = loadFromFile(cniFilePath, False)
+        return f"{urlStart}/file={filepath[:-4]}.cni" if len(cnList) > 0 else ""
+    else:
+        return ""
+
+
 def viewSaveDataExecute(file: gr.File or str) -> tuple:
     """
     查看本插件存储在图片/.cni中的数据
@@ -241,10 +263,11 @@ def addToPicture(image: str, datalist: list, imageType: str) -> bytes | None:
         return base64.b64encode(combined_data)
 
 
-def loadFromFile(filepath: str) -> list:
+def loadFromFile(filepath: str, enableWarn: Optional[bool] = None) -> list:
     """
     从图片中读取ControlnetList
     :param filepath: 图片路径
+    :param enableWarn 是否报错
     """
     if not os.path.exists(filepath):
         print_err(f"File {filepath} does not exist.")
@@ -259,7 +282,7 @@ def loadFromFile(filepath: str) -> list:
         readyLoadList = pickle.loads(embedded_data)
         return readyLoadList
     except Exception as e:
-        print_err(f"Error while loading hidden data from the image: {e}")
+        print_err(f"Error while loading hidden data from the image: {e}") if enableWarn is None else None
         return []
 
 

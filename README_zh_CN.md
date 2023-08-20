@@ -8,10 +8,17 @@
 - 从嵌入Controlnet参数的图片或文件快速加载参数到txt2img或img2img中
 - 可以在UI下使用, 或通过API调用
 - 可选功能`isEnabledManualSend`**可以让你在这个插件下完成出图的全部前期准备**
+- `Controlnet Fastload Filter` Tab可以**根据ControlNet参数**导入图片
 
 ## 预览
+### 主功能
 ![preview_1.png](preview_1.png)
+### 预览嵌入信息
 ![preview_2.png](preview_2.png)
+### Controlnet Fastload筛选Tab
+![preview_3.png](preview_3.png)
+
+https://github.com/pk5ls20/sd-webui-controlnet-fastload/assets/114645197/054dcbd2-3f04-4d56-9339-e119a2eeed46
 
 ## 使用方法
 ### 用户界面
@@ -19,7 +26,6 @@
 > 你可以在设置中调整插件偏好或启用`isEnabledManualSend`
 
 ### Web API
-
 #### 与`/sdapi/v1/*2img`集成使用 
 
 在与`/sdapi/v1/*2img`集成使用时你只能得到处理好的图片本体   
@@ -117,3 +123,23 @@ if __name__ == '__main__':
 #### 路由 GET `/controlnetFastload/version`
 
 获取当前API版本
+
+## Controlnet Fastload筛选Tab的安全设定
+由于远程主机访问等安全原因，你可以设置环境变量为Controlnet Fastload Filter tab增加访问限制
+
+### 环境变量
+
+| 变量名                                       | 变量描述                                                                                                |
+|-------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| CONTROLNET_FASTLOAD_FILTER_ACCESS_CONTROL | 决定当启用远程访问时，插件读取目录的级别<br/>0 - 无法读取任何目录<br/>1 - 只能读取固定的txt2img和img2img<br/>2 - 可以读取任意目录<br/>**默认值为2** |
+ | CONTROLNET_FASTLOAD_FILTER_ACCESS_TOKEN   | 可以在远程访问时输入后拥有最高权限的token                                                                             |
+
+## Star History
+
+<a href="https://star-history.com/#pk5ls20/sd-webui-controlnet-fastload&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=pk5ls20/sd-webui-controlnet-fastload&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=pk5ls20/sd-webui-controlnet-fastload&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=pk5ls20/sd-webui-controlnet-fastload&type=Date" />
+  </picture>
+</a>

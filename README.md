@@ -8,10 +8,18 @@ An extension for `stable-diffusion-webui`.
 - Quickly load parameters from an image or file embedded with Controlnet parameters to txt2img or img2img.
 - Use under the UI or call through the API.
 - Optional features `isEnabledManualSend` **allow you to complete all preparations under this plugin.**
+- `Controlnet Fastload Filter` Tab allow you import pictures according to **ControlNet parameter classification**
 
 ## Preview
+### Main function
 ![preview_1.png](preview_1.png)
+### View embedded information
 ![preview_2.png](preview_2.png)
+### Controlnet Fastload Filter tab
+![preview_3.png](preview_3.png)
+
+https://github.com/pk5ls20/sd-webui-controlnet-fastload/assets/114645197/ff6ce950-b52e-4748-8a27-212cc5a96c3d
+
 
 ## Usage
 ### UI
@@ -117,3 +125,23 @@ Used to obtain information in Controlnet Data files, Body of the route accepts a
 #### Route GET `/controlnetFastload/version`
 
 Get the current API version
+
+## Controlnet Fastload Filter Tab security settings
+Due to security reasons such as remote host access, you can add access restrictions to the Controlnet Fastload Filter tab via set Environment variables
+
+### Environment variables
+
+| Name                                      | Description                                                                                                                                                                                                                                                |
+|-------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| CONTROLNET_FASTLOAD_FILTER_ACCESS_CONTROL | Determine the level of directory reading by the plugin when remote access is enabled. <br/>0 - Cannot read any directories. <br/>1 - Can only read the specific directories 'txt2img' and 'img2img'. <br/>2 - Can read any directory.<br/>**Default is 2** |
+ | CONTROLNET_FASTLOAD_FILTER_ACCESS_TOKEN   | A token with the highest privileges when accessing remotely.                                                                                                                                                                                               |
+
+## Star History
+
+<a href="https://star-history.com/#pk5ls20/sd-webui-controlnet-fastload&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=pk5ls20/sd-webui-controlnet-fastload&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=pk5ls20/sd-webui-controlnet-fastload&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=pk5ls20/sd-webui-controlnet-fastload&type=Date" />
+  </picture>
+</a>

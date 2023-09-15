@@ -46,8 +46,7 @@ class ControlNetFastLoad(scripts.Script):
 
     def ui(self, is_img2img: bool) -> list[Checkbox | Dropdown | File | Textbox | Button | Gallery | JSON]:
         ui_list = []
-        elem_id_ = self.elem_id("img2img_controlnet_fastload" if is_img2img else "txt2img_controlnet_fastload")
-        with (gr.Accordion("ControlNet Fastload v1.2", open=False, elem_id=elem_id_)):
+        with (gr.Accordion("ControlNet Fastload v1.2.0.2", open=False, elem_id=self.elem_id(""))):
             with gr.Tab("Load data from file"):
                 with gr.Row():
                     enabled = gr.Checkbox(value=False, label="Enable", elem_id=self.elem_id("cnfl_enabled"))
@@ -111,6 +110,7 @@ class ControlNetFastLoad(scripts.Script):
         return ui_list
 
     def before_process(self, p, *args) -> None:
+        con1 = importlib.import_module('scripts.global_state')
         api_module = importlib.import_module('extensions.sd-webui-controlnet-fastload.scripts.api')
         api_package = getattr(api_module, "api_package")
         if type(args[0]) is not bool:
@@ -130,6 +130,7 @@ class ControlNetFastLoad(scripts.Script):
                 controlNetModule = importlib.import_module('extensions.sd-webui-controlnet.scripts.external_code',
                                                            'external_code')
                 # from scripts.controlnet_ui.controlnet_ui_group import ControlNetUiGroup, UiControlNetUnit
+                con = importlib.import_module('scripts.controlnet_ui.controlnet_ui_group')
                 # 获取最原始的controlnetList
                 controlNetList = controlNetModule.get_all_units_in_processing(p)
                 controlNetListOriLen = len(controlNetList)
@@ -139,7 +140,7 @@ class ControlNetFastLoad(scripts.Script):
                     print_warn("Script received no input; the loading process will be skipped.")
                     break_load = True
             except ImportError:
-                print_warn("ControlNet module not found; the script will not work.")
+                print_warn("ControlNet not found; the script will not work.")
                 # proc = process_images(p)
                 # return proc
                 return
@@ -168,6 +169,8 @@ class ControlNetFastLoad(scripts.Script):
                     api_package.api_instance.drawId[id(p)] = controlNetList
 
     def postprocess_image(self, p, pp, *args):
+        con = importlib.import_module('scripts.controlnet_ui.controlnet_ui_group')
+        con1 = importlib.import_module('scripts.global_state')
         if type(args[0]) is not bool and args[0]['mode'] != "Load Only":
             p.extra_generation_params['ControlNetID'] = id(p)
 

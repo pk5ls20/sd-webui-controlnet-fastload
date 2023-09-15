@@ -11,11 +11,17 @@ from modules import script_callbacks
 from scripts.fastload import judgeControlnetDataFile, print_info
 import modules.generation_parameters_copypaste as parameters_copypaste
 
-filepathList, picDict, picSHA256 = [], {}, {}
+picSHA256, allViewData = {}, {}
 addEmoji = "➕"
 flyEmoji = "✈️"
 elemIdFlag = "controlnet_fastload_tab_"
 accessLevel = -1
+
+
+class viewDataWrap:
+    def __init__(self, filepathList: list, picDict: dict):
+        self.filepathList = filepathList
+        self.picDict = picDict
 
 
 class ToolButton(gr.Button, gr.components.FormComponent):
@@ -230,6 +236,7 @@ def fnViewPathSelect(viewPathSelect: str) -> dict:
 
 
 def fnFilterKeyChange(filterKey: str, filterAll: list) -> list:
+    picDict = {}
     tmpList = [] if filterKey == "None" else [f"{filterKey} - {itm}" for itm in picDict[filterKey].keys()]
     return [gr.update(visible=True, choices=tmpList, value=[]), gr.update(visible=False), filterAll]
 
@@ -243,7 +250,7 @@ def fnFilterAddAll(filterKey: str, filterValueDropDown: list, filterValueTextbox
 
 def fnLoadPicture(*args) -> list:
     viewPath, viewPathSelect, lastViewPath, filterAll, filterKey, pageIndex = args[:6]
-    global filepathList, picDict
+    global allViewData
     if accessLevel <= 0:
         raise gr.Error("You have no permission to use this function")
     if not (os.path.exists(viewPath) and os.path.isdir(viewPath)):
@@ -251,6 +258,7 @@ def fnLoadPicture(*args) -> list:
     if viewPath != lastViewPath:
         # 全新加载
         filepathList, picDict = loadPicture(viewPath)
+        allViewData[viewPath] = viewDataWrap(filepathList, picDict)
         tmpFilterKey = list(picDict.keys())
         tmpFilterKey.insert(0, "None")
         displayPic, pageIndex_ = loadDisplayPic(*args,
@@ -261,6 +269,7 @@ def fnLoadPicture(*args) -> list:
                 gr.update(value=pageIndex_), [], "", gr.update(value=[]), gr.update(value=[])]
     else:
         # 直接对filepathList进行筛选
+        filepathList, picDict = (allViewData[viewPath].filepathList, allViewData[viewPath].picDict)
         allSet = set(filepathList)
         for itm in filterAll:
             key, val = itm.split(" - ")

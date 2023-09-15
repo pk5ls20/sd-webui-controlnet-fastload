@@ -80,7 +80,7 @@ def on_ui_tabs() -> list:
                         with gr.Column(min_width=100):
                             endPage = gr.Button("End Page")
                     lastViewPath = gr.Textbox(visible=False, interactive=False)
-                    gallery = gr.Gallery(elem_id="_images_history_gallery").style(grid=6)
+                    gallery = gr.Gallery(elem_id="_images_history_gallery", columns=6)
                 with gr.Column(scale=2):
                     with gr.Row():
                         # filterKey和filterValue绑定
@@ -104,14 +104,14 @@ def on_ui_tabs() -> list:
                             label="ControlNet Info",
                             combine_adjacent=False,
                             show_legend=False,
-                        ).style(color_map={"include": "green"})
+                            color_map={"include": "green"})
                     with gr.Row():
                         with (gr.Accordion("Other Info", open=False)):
                             otherInfo = gr.HTML()
                             selectPicAddress = gr.Textbox(value="", visible=False, interactive=False)
                             selectPicControlnetAddress = gr.Textbox(value="", visible=False, interactive=False)
                         pass
-                    with gr.Row().style(equal_height=True):
+                    with gr.Row(equal_height=True):
                         tabDebugBox = gr.Textbox(value="True" if tabDebug else "False", visible=False)
                         with gr.Column(min_width=80):
                             sendTxt2img = gr.Button(value="Send to txt2img", elem_id=f'{elemIdFlag}send_txt2img')

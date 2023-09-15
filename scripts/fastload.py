@@ -6,8 +6,9 @@ import base64
 import importlib
 import gradio as gr
 from PIL import Image
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
+from gradio import Checkbox, Dropdown, File, Textbox, Button, Gallery, JSON
 import modules.scripts as scripts
 from modules import script_callbacks
 from modules.script_callbacks import ImageSaveParams
@@ -43,7 +44,7 @@ class ControlNetFastLoad(scripts.Script):
     def show(self, is_img2img: bool) -> bool:
         return scripts.AlwaysVisible
 
-    def ui(self, is_img2img: bool) -> list[gr.Interface]:
+    def ui(self, is_img2img: bool) -> list[Checkbox | Dropdown | File | Textbox | Button | Gallery | JSON]:
         ui_list = []
         elem_id_ = self.elem_id("img2img_controlnet_fastload" if is_img2img else "txt2img_controlnet_fastload")
         with (gr.Accordion("ControlNet Fastload v1.2", open=False, elem_id=elem_id_)):
@@ -95,12 +96,9 @@ class ControlNetFastLoad(scripts.Script):
                                                   elem_id=self.elem_id("cnfl_uploadImage_view_tab"))
                 with gr.Row():
                     img_view_tab = gr.Gallery(type="file", label="Image data view",
-                                              elem_id=self.elem_id("cnfl_img_view_tab")).style(rows=2, columns=2,
-                                                                                               allow_preview=True,
-                                                                                               show_download_button=True,
-                                                                                               object_fit="contain",
-                                                                                               height="auto",
-                                                                                               show_label=True)
+                                              elem_id=self.elem_id("cnfl_img_view_tab"), rows=2, columns=2,
+                                              allow_preview=True, show_download_button=True, object_fit="contain",
+                                              show_label=True)
                 with gr.Row():
                     text_view_tab = gr.Json(label="Text data view",
                                             elem_id=self.elem_id("cnfl_text_view_tab"))
@@ -131,6 +129,7 @@ class ControlNetFastLoad(scripts.Script):
                 break_load = False
                 controlNetModule = importlib.import_module('extensions.sd-webui-controlnet.scripts.external_code',
                                                            'external_code')
+                # from scripts.controlnet_ui.controlnet_ui_group import ControlNetUiGroup, UiControlNetUnit
                 # 获取最原始的controlnetList
                 controlNetList = controlNetModule.get_all_units_in_processing(p)
                 controlNetListOriLen = len(controlNetList)

@@ -4,7 +4,7 @@ const appDoc = gradioApp();
 const sendMsg = (isDebug, send_) => {
     return isDebug === "True"
         ? console.log(`Log ${send_}`)
-        : alert(`Send to ${send_}`);
+        : alert(`${send_}`);
 }
 
 async function checkAccessToken(accessTokenInput, accessTokenRightSHA512) {
@@ -22,26 +22,33 @@ async function checkAccessToken(accessTokenInput, accessTokenRightSHA512) {
     return [accessTokenInput, accessTokenRightSHA512]
 }
 
+function checkElementExistence(selector) {
+    return new Promise((resolve, reject) => {
+        let checkInterval = setInterval(() => {
+            let element = document.querySelector(selector);
+            if (element) {
+                clearInterval(checkInterval);
+                resolve();
+            }
+        }, 500);
+    });
+}
+
 //selectPicAddress, selectPicControlnetAddress, sendControlnetPriority, sendControlnetTxt2img, info
 async function sendToAny2img(picAddress, controlnetAddress, priority, way, isDebug) {
     way = (way === "Send to Controlnet-txt2img") ? "txt2img" : "img2img";
     let fastloadElemId = (way === "txt2img") ? "script_txt2img_controlnet_fastload_" : "script_img2img_controlnet_fastload_";
+    let status;
     // priority === auto, 当controlnetAddress不为空发送到fastload, 否则controlnet
-    let send_, status;
+    if (picAddress === "" && controlnetAddress === "") return sendMsg(isDebug, "Please select a picture first!");
     (way === "txt2img") ? window.switch_to_txt2img() : window.switch_to_img2img();
     await delay(200);
     if (priority === "Auto") {
-        if (controlnetAddress === "") {
-            send_ = "Controlnet";
-            status = await sendToControlnet(way, picAddress);
-        } else {
-            send_ = "Controlnet Fastload";
-            status = await sendToControlnetFastload(way, controlnetAddress, fastloadElemId);
-        }
+        if (controlnetAddress === "") status = await sendToControlnet(way, picAddress);
+        else status = await sendToControlnetFastload(way, controlnetAddress, fastloadElemId);
         sendMsg(isDebug, status[1]);
     } else if (priority === "Controlnet First") {
         status = await sendToControlnet(way, picAddress);
-        // 这是啥意思来着?
         if (controlnetAddress !== "") sendMsg(isDebug, `Send to Controlnet, But there are fastload data in there...`);
         sendMsg(isDebug, status[1]);
     } else {
@@ -60,6 +67,18 @@ async function sendToControlnet(way, url_) {
             await delay(100);
         }
         wrap.scrollIntoView();
+        if (way === "img2img") {
+            let checkbox1 = document.querySelector(
+              "#img2img_controlnet_ControlNet-0_controlnet_same_img2img_checkbox input[type='checkbox']"
+            );
+            let checkbox2 = document.querySelector(
+                "#img2img_controlnet_ControlNet_controlnet_same_img2img_checkbox input[type='checkbox']"
+            );
+            let availableCheckbox = (checkbox1 === null) ? checkbox2 : checkbox1;
+            if (!availableCheckbox.checked) availableCheckbox.click();
+            let pic = (checkbox1 === null) ? "#img2img_controlnet_ControlNet_input_image" : "#img2img_controlnet_ControlNet-0_input_image";
+            await checkElementExistence(pic);
+        }
         const response = await fetch(url_);
         const imageBlob = await response.blob();
         const imageFile = new File([imageBlob], 'image.jpg', {
@@ -82,7 +101,7 @@ async function sendToControlnet(way, url_) {
 async function sendToControlnetFastload(way, url_, fastloadElemId) {
     try {
         await delay(200);
-        if (url_ === "")  return [false, "The selected picture lacks Fastload data. Operation aborted."];
+        if (url_ === "") return [false, "The selected picture lacks Fastload data. Operation aborted."];
         const cn = appDoc.querySelector(`#${fastloadElemId}`);
         const wrap = cn.querySelector('.label-wrap');
         if (!wrap.className.includes('open')) {

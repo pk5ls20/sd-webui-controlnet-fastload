@@ -5,6 +5,7 @@ import pickle
 import base64
 import importlib
 import gradio as gr
+import numpy as np
 from PIL import Image
 from typing import Optional, List
 from datetime import datetime
@@ -230,7 +231,10 @@ def viewSaveDataExecute(file: gr.File or str) -> tuple:
         for itm in tmpControlNetList:
             tmp = itm if isinstance(itm, dict) else vars(itm)
             if "image" in tmp and tmp["image"] is not None:
-                image_arrays = [(img_array, f"Controlnet - {loop_count}") for img_array in tmp["image"].values()]
+                if isinstance(tmp["image"], np.ndarray):
+                    image_arrays = [(tmp["image"], f"Controlnet - {loop_count}")]
+                else:
+                    image_arrays = [(img_array, f"Controlnet - {loop_count}") for img_array in tmp["image"].values()]
                 previewPicture.extend(image_arrays)
                 tmp.pop("image")
             previewInformation.append(tmp)

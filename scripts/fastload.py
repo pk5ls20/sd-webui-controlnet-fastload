@@ -5,9 +5,11 @@ import pickle
 import base64
 import importlib
 import gradio as gr
+import numpy as np
 from PIL import Image
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
+from gradio import Checkbox, Dropdown, File, Textbox, Button, Gallery, JSON
 import modules.scripts as scripts
 from modules import script_callbacks
 from modules.script_callbacks import ImageSaveParams
@@ -43,10 +45,9 @@ class ControlNetFastLoad(scripts.Script):
     def show(self, is_img2img: bool) -> bool:
         return scripts.AlwaysVisible
 
-    def ui(self, is_img2img: bool) -> list[gr.Interface]:
+    def ui(self, is_img2img: bool) -> list[Checkbox | Dropdown | File | Textbox | Button | Gallery | JSON]:
         ui_list = []
-        elem_id_ = self.elem_id("img2img_controlnet_fastload" if is_img2img else "txt2img_controlnet_fastload")
-        with (gr.Accordion("ControlNet Fastload v1.2", open=False, elem_id=elem_id_)):
+        with (gr.Accordion("ControlNet Fastload v1.2.1", open=False, elem_id=self.elem_id(""))):
             with gr.Tab("Load data from file"):
                 with gr.Row():
                     enabled = gr.Checkbox(value=False, label="Enable", elem_id=self.elem_id("cnfl_enabled"))
@@ -95,12 +96,9 @@ class ControlNetFastLoad(scripts.Script):
                                                   elem_id=self.elem_id("cnfl_uploadImage_view_tab"))
                 with gr.Row():
                     img_view_tab = gr.Gallery(type="file", label="Image data view",
-                                              elem_id=self.elem_id("cnfl_img_view_tab")).style(rows=2, columns=2,
-                                                                                               allow_preview=True,
-                                                                                               show_download_button=True,
-                                                                                               object_fit="contain",
-                                                                                               height="auto",
-                                                                                               show_label=True)
+                                              elem_id=self.elem_id("cnfl_img_view_tab"), rows=2, columns=2,
+                                              allow_preview=True, show_download_button=True, object_fit="contain",
+                                              show_label=True)
                 with gr.Row():
                     text_view_tab = gr.Json(label="Text data view",
                                             elem_id=self.elem_id("cnfl_text_view_tab"))
@@ -140,7 +138,7 @@ class ControlNetFastLoad(scripts.Script):
                     print_warn("Script received no input; the loading process will be skipped.")
                     break_load = True
             except ImportError:
-                print_warn("ControlNet module not found; the script will not work.")
+                print_warn("ControlNet not found; the script will not work.")
                 # proc = process_images(p)
                 # return proc
                 return
@@ -226,9 +224,12 @@ def viewSaveDataExecute(file: gr.File or str) -> tuple:
         previewInformation = []
         loop_count = 0
         for itm in tmpControlNetList:
-            tmp = vars(itm)
+            tmp = itm if isinstance(itm, dict) else vars(itm)
             if "image" in tmp and tmp["image"] is not None:
-                image_arrays = [(img_array, f"Controlnet - {loop_count}") for img_array in tmp["image"].values()]
+                if isinstance(tmp["image"], np.ndarray):
+                    image_arrays = [(tmp["image"], f"Controlnet - {loop_count}")]
+                else:
+                    image_arrays = [(img_array, f"Controlnet - {loop_count}") for img_array in tmp["image"].values()]
                 previewPicture.extend(image_arrays)
                 tmp.pop("image")
             previewInformation.append(tmp)
@@ -270,8 +271,8 @@ def loadFromFile(filepath: str, enableWarn: Optional[bool] = None) -> list:
     :param enableWarn 是否报错
     """
     if not os.path.exists(filepath):
-        print_err(f"File {filepath} does not exist.")
-        return []
+        print_err(f"File {filepath} does not exist.") if enableWarn is None else None
+        return [{"Error": f"File {filepath} does not exist."}]
     with open(filepath, 'rb') as fp:
         readyLoadData = fp.read()
     start_idx = readyLoadData.find(start_marker) + len(start_marker)
@@ -281,9 +282,12 @@ def loadFromFile(filepath: str, enableWarn: Optional[bool] = None) -> list:
         # 判定存入的controlnet和现有的controlnet数量差异
         readyLoadList = pickle.loads(embedded_data)
         return readyLoadList
+    except gzip.BadGzipFile:
+        print_err(f"{filepath} does not contain valid Controlnet Fastload data.") if enableWarn is None else None
+        return [{"Error": f"{filepath} does not contain valid Controlnet Fastload data."}]
     except Exception as e:
-        print_err(f"Error while loading hidden data from the image: {e}") if enableWarn is None else None
-        return []
+        print_err(f"Error while loading Controlnet Fastload data from the image: {e}") if enableWarn is None else None
+        return [{"Error": f"Error while loading Controlnet Fastload data from the image: {e}"}]
 
 
 # 保存图片钩子

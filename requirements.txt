@@ -1,0 +1,5 @@
+fastapi==0.103.1
+gradio==3.44.3
+modules==1.0.0
+numpy==1.26.0
+Pillow==10.0.1
